@@ -1,0 +1,49 @@
+steps:
+  # move .env.test to.env
+  - name: "bash"
+    args: ["mv", ".env.test", ".env"]
+    # install yarn
+  - name: "gcr.io/cloud-builders/yarn"
+    args: ["install"]
+    # run test
+  - name: "gcr.io/cloud-builders/yarn"
+    args: ["run", "test"]
+    # build project
+  - name: "gcr.io/cloud-builders/yarn"
+    args: ["run", "build"]
+  # Build the container image
+  - name: gcr.io/cloud-builders/docker
+    args: [
+    'build', 
+    '--tag', 
+    'gcr.io/$PROJECT_ID/member:$SHORT_SHA',
+    '--tag', 
+    'gcr.io/$PROJECT_ID/member:latest',
+    '.'
+    ]
+  # Push Docker image short commit tag
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["push", "gcr.io/$PROJECT_ID/member:$SHORT_SHA"]
+  # Push Docker image latest tag
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["push", "gcr.io/$PROJECT_ID/member:latest"]
+  # Deploy container image to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "member"
+      - "--image"
+      - "gcr.io/$PROJECT_ID/member:$SHORT_SHA"
+      - "--region"
+      - "asia-east1"
+      - "--platform"
+      - "managed"
+      - "--max-instances"
+      - "10"
+      - "--memory"
+      - "1Gi"
+      - "--cpu"
+      - "1"
+
